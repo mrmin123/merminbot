@@ -1,0 +1,28 @@
+{
+    "name": "merminbot",
+    "version": "1.0.0",
+    "description": "merminbot",
+    "main": "merminbot.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "dependencies": {
+        "express": "^3.4.x",
+        "mongodb": "^1.4.10",
+        "irc": "^0.3.7",
+        "moment": "^2.8.3"
+    },
+    "engines": {
+        "node": "0.10.x"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mrmin123/merminbot.git"
+    },
+    "author": "mrmin123",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/mrmin123/merminbot/issues"
+    },
+    "homepage": "https://github.com/mrmin123/merminbot"
+}
