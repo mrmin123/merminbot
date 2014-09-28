@@ -3,7 +3,7 @@ var moment = require('moment');
 var tz = require('moment-timezone');
 var youtube = require('youtube-node');
 var params = require('./params.js');
-var functions = require('./functions.js');
+var functions = require('./merminbot.irc.functions.js');
 
 youtube.setKey(params.google_api_key);
 
@@ -61,7 +61,7 @@ db.connect(params.db, function(err, db) {
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_add(in_chan[channel], nick);
                 functions.channel_new_alias(users, channel, nick, 'auto');
-                functions.view_notes(client, users, notes, channel, nick, 'auto');
+                functions.note_view(client, users, notes, channel, nick, 'auto');
             }
         });
         
@@ -117,7 +117,7 @@ db.connect(params.db, function(err, db) {
                     var channel = channels[i];
                     in_chan[channel] = functions.in_chan_rename(in_chan[channel], oldnick, newnick);
                     functions.channel_merge_alias(users, notes, channel, oldnick, newnick);
-                    functions.view_notes(client, users, notes, channel, newnick, 'auto');
+                    functions.note_view(client, users, notes, channel, newnick, 'auto');
                 }
             }
         });
@@ -230,7 +230,7 @@ db.connect(params.db, function(err, db) {
                     }
                 }
                 else if (match_botflag[1] == 'getnotes' || match_botflag[1] == 'getnote' || match_botflag[1] == 'viewnote' || match_botflag[1] == 'viewnotes') {
-                    functions.view_notes(client, users, notes, to, nick, 'manual');
+                    functions.note_view(client, users, notes, to, nick, 'manual');
                 }
                 else {
                     client.say(to, 'commands (and aliases): lastseen (ls seen) addalias viewalias (viewaliases) adduser addnote (leavenote) getnotes (getnote viewnote viewnotes)');
@@ -242,10 +242,12 @@ db.connect(params.db, function(err, db) {
                     var pasted_url = match_yt[0];
                     var regex_yt_id = /^([^&]+)/;
                     var match_yt_id = regex_yt_id.exec(match_yt[1]);
-                    
                     youtube.getById(match_yt_id[1], function(result) {
-                        client.say(to, pasted_url + ' : "' + result['items'][0]['snippet']['title'] + '" uploaded by ' + result['items'][0]['snippet']['channelTitle'] +
-                            ' (' + result['items'][0]['contentDetails']['duration'].substring(2).toLowerCase() + ')');
+                        console.log(result);
+                        if (result['items'].length == 1) {
+                            client.say(to, pasted_url + ' : "' + result['items'][0]['snippet']['title'] + '" uploaded by ' + result['items'][0]['snippet']['channelTitle'] +
+                                ' (' + result['items'][0]['contentDetails']['duration'].substring(2).toLowerCase() + ')');
+                        }
                     });
                     match_yt = regex_yt.exec(text);
                 }
