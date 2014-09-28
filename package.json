@@ -8,9 +8,13 @@
     },
     "dependencies": {
         "express": "^3.4.x",
+        "jade": "^1.7.0",
+        "stylus": "^0.49.1",
+        "nib": "^1.0.3",
         "mongodb": "^1.4.10",
         "irc": "^0.3.7",
-        "moment": "^2.8.3"
+        "moment": "^2.8.3",
+        "youtube-node": "^1.0.1"
     },
     "engines": {
         "node": "0.10.x"
