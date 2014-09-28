@@ -25,9 +25,9 @@ db.connect(params.db, function(err, db) {
     if (!err) {
         console.log('web db connect');
         
-        var users = db.collection('dev_users');
-        var notes = db.collection('dev_notes');
-        var misc = db.collection('dev_misc');
+        var users = db.collection('users');
+        var notes = db.collection('notes');
+        var misc = db.collection('misc');
         
         app.get('/:channel', function(req, res){
             var channel = '#' + req.params.channel;

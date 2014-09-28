@@ -30,9 +30,9 @@ db.connect(params.db, function(err, db) {
     if (!err) {
         console.log('db connect');
         
-        var users = db.collection('dev_users');
-        var notes = db.collection('dev_notes');
-        var misc = db.collection('dev_misc');
+        var users = db.collection('users');
+        var notes = db.collection('notes');
+        var misc = db.collection('misc');
         var in_chan = [];
         
         client.addListener('ping', function (server) {
