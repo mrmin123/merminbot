@@ -5,11 +5,15 @@ global-reset()
 
 white = #fff
 blue = #4b8fd4
+main = #333
+
+strong
+    font-weight bold
 
 body
     font-family 'Droid Sans'
     background-color white
-    color #333
+    color main
     text-align: center;
     
 header
@@ -35,7 +39,7 @@ header p
     line-height 18pt
     
 header p a
-    border-bottom 2px solid rgba(255,255,255, 0.5);
+    border-bottom 2px solid rgba(255,255,255, 0.5)
     color white
     font-size 13pt
     font-weight bold
@@ -44,7 +48,7 @@ header p a
     transition all 0.3s
     
 header p a:hover
-    border-bottom 2px solid rgba(255,255,255, 1);
+    border-bottom 2px solid rgba(255,255,255, 1)
     
 header a.github
     color white
@@ -63,4 +67,88 @@ header i.fa-sep
     color white
     font-size 15pt
     
+header.sub
+    margin-top 30px
+    height 40px
+    text-align center
     
+header.sub h1
+    padding 0
+    font-size 20pt
+    line-height 40px
+    letter-spacing 4px
+    
+header.sub h1 a
+    color white
+    text-decoration none
+    border-top 5px solid rgba(255,255,255, 0.5)
+    border-bottom 5px solid rgba(255,255,255, 0.5)
+    transition all 0.3s
+    
+header.sub h1 a:hover
+    border-top 5px solid rgba(255,255,255, 1)
+    border-bottom 5px solid rgba(255,255,255, 1)
+    
+container
+    display block
+    width 600px
+    text-align left
+    margin 0 auto 0 auto
+    
+container h2
+    display block
+    margin 20px 0 20px 0
+    font-size 14pt
+    text-align center
+    
+container h2 a
+    color main
+    text-decoration none
+    border-bottom 2px solid rgba(0,0,0, 0.1)
+    transition all 0.3s
+    
+container h2 a:hover
+    border-bottom 2px solid rgba(0,0,0, 0.8)
+    
+container p
+    font-size 12pt
+    text-align left
+
+container p.message
+    font-size 11pt
+    
+container p.details
+    margin 5px 0 20px 10px
+    font-size 10pt
+    
+container div.box
+    float left
+    display block
+    width 180px
+    height 180px
+    margin 10px
+    padding 0
+    background-color blue
+    color white
+    text-align center
+    vertical-align middle
+    transition all 0.3s
+    
+container div.box:hover
+    margin 0px
+    padding 10px
+    
+container div.box i
+    display block
+    margin 15px 0 15px
+    
+container div.box strong
+    display block
+    font-size 12pt
+    font-weight bold
+    
+container div.box span
+    display block
+    font-size 10pt
+    font-weight normal
+    line-height 18pt

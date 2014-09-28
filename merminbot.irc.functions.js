@@ -102,16 +102,18 @@ var channel_merge_alias = function(users, notes, channel, oldnick, newnick) {
                                                     { 'to': result_old['_id'], 'channel': channel },
                                                     { sort: { 'date_time': 1 } }
                                                 ).toArray(function(err, result_notes) {
-                                                    if (result_notes.length > 0) {
-                                                        for (var i = 0; i < result_notes.length; i++) {
-                                                            var raw_obj = result_notes[i];
-                                                            notes.findAndModify(
-                                                                { '_id': raw_obj['_id'] },
-                                                                [ ],
-                                                                { $set: { 'to': result_new['_id'] } },
-                                                                { w: 1 },
-                                                                function(err, result_merge_notes) { console.log('channel_merge_alias: notes for ' + oldnick + ' switched to ' + newnick + ' (' + channel + ')'); }
-                                                            );
+                                                    if (result_notes != null) {
+                                                        if (result_notes.length > 0) {
+                                                            for (var i = 0; i < result_notes.length; i++) {
+                                                                var raw_obj = result_notes[i];
+                                                                notes.findAndModify(
+                                                                    { '_id': raw_obj['_id'] },
+                                                                    [ ],
+                                                                    { $set: { 'to': result_new['_id'] } },
+                                                                    { w: 1 },
+                                                                    function(err, result_merge_notes) { console.log('channel_merge_alias: notes for ' + oldnick + ' switched to ' + newnick + ' (' + channel + ')'); }
+                                                                );
+                                                            }
                                                         }
                                                     }
                                                 });
@@ -209,25 +211,27 @@ var note_view = function(client, users, notes, channel, nick, mode) {
                     { 'to': result_users['_id'], 'channel': channel, 'read': 0 },
                     { sort: { 'date_time': 1 } }
                 ).toArray(function(err, result_notes) {
-                    if (result_notes.length > 0) {
-                        console.log('note_view: got notes for ' + nick + ' (' + channel + ')');
-                        for (var i = 0; i < result_notes.length; i++) {
-                            var raw_obj = result_notes[i];
-                            var formatted_datetime = parse_date(raw_obj['date_time']);
-                            client.say(channel, 'note left by ' + raw_obj['from'] + ' for ' + nick + ' on ' + formatted_datetime[3] + ': ' + raw_obj['note']);
-                            notes.findAndModify(
-                                { '_id': raw_obj['_id'] },
-                                [ ],
-                                { $set: { 'read': 1 } },
-                                { w: 1 },
-                                function(err, result_toss) { console.log('note_view: set notes for ' + nick + ' (' + channel + ') as read'); }
-                            );
+                    if (result_notes != null) {
+                        if (result_notes.length > 0) {
+                            console.log('note_view: got notes for ' + nick + ' (' + channel + ')');
+                            for (var i = 0; i < result_notes.length; i++) {
+                                var raw_obj = result_notes[i];
+                                var formatted_datetime = parse_date(raw_obj['date_time']);
+                                client.say(channel, 'note left by ' + raw_obj['from'] + ' for ' + nick + ' on ' + formatted_datetime[3] + ': ' + raw_obj['note']);
+                                notes.findAndModify(
+                                    { '_id': raw_obj['_id'] },
+                                    [ ],
+                                    { $set: { 'read': 1 } },
+                                    { w: 1 },
+                                    function(err, result_toss) { console.log('note_view: set notes for ' + nick + ' (' + channel + ') as read'); }
+                                );
+                            }
                         }
-                    }
-                    else {
-                        if (mode == 'manual') {
-                            console.log('note_view: no notes for ' + nick + ' (' + channel + ')');
-                            client.say(channel, 'no unread notes for ' + nick);
+                        else {
+                            if (mode == 'manual') {
+                                console.log('note_view: no notes for ' + nick + ' (' + channel + ')');
+                                client.say(channel, 'no unread notes for ' + nick);
+                            }
                         }
                     }
                 });
@@ -246,14 +250,26 @@ var misc_update_uptime = function(misc, date_time) {
     );
 }
 
-var misc_get_uptime = function(client, misc, misc) {
+var misc_get_uptime = function(client, misc, extra) {
     misc.findOne(
         { 'status': 1 },
         { 'last_uptime': 1 },
         function (err, result) {
             var formatted_datetime = parse_date(result['last_uptime']);
-            client.say(to, 'Lost track of ' + misc + '! Last seen around ' + formatted_datetime[3]);
+            client.say(to, 'Lost track of ' + extra + '! Last seen around ' + formatted_datetime[3]);
         }
+    );
+}
+
+var misc_update_counts = function(misc, channel, counter) {
+    var update_counter = { $inc : {} };
+    update_counter.$inc[counter] = 1;
+    
+    misc.update(
+        { 'channel': channel },
+        update_counter,
+        { upsert: true },
+        function(err, result) {}
     );
 }
 
@@ -270,5 +286,6 @@ module.exports = {
     note_add: note_add,
     note_view: note_view,
     misc_update_uptime: misc_update_uptime,
-    misc_get_uptime: misc_get_uptime
+    misc_get_uptime: misc_get_uptime,
+    misc_update_counts: misc_update_counts
 }

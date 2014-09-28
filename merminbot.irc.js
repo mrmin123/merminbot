@@ -30,9 +30,9 @@ db.connect(params.db, function(err, db) {
     if (!err) {
         console.log('db connect');
         
-        var users = db.collection('users');
-        var notes = db.collection('notes');
-        var misc = db.collection('misc');
+        var users = db.collection('dev_users');
+        var notes = db.collection('dev_notes');
+        var misc = db.collection('dev_misc');
         var in_chan = [];
         
         client.addListener('ping', function (server) {
@@ -125,11 +125,11 @@ db.connect(params.db, function(err, db) {
         client.addListener('message', function (nick, to, text, message) {
             if (nick == params.irc['botname'] || to == params.irc['botname']) { return; }
             
-            var regex_botflag = '^' + params.botflag + ' (\\S+)(.*)';
+            var regex_botflag = '^' + params.botflag + '(\\S+)(.*)';
             var re_botflag = new RegExp(regex_botflag, "i");
             var match_botflag = text.match(re_botflag);
             
-            var regex_yt = /(?:https?:\/\/)?(?:[\w]+\.)?youtube\.com\/watch\?v=([\S]+)/ig;
+            var regex_yt = /(?:https?:\/\/)?(?:[\w]+\.)?youtu\.?be(?:\.com)?\/watch\?v=([\S]+)/ig;
             var match_yt = regex_yt.exec(text);
             
             if (match_botflag) {
@@ -190,6 +190,7 @@ db.connect(params.db, function(err, db) {
                     var result = subcmdlow.split(' ');
                     if (result.length == 2) {
                         functions.channel_add_alias(users, to, result[0], result[1]);
+                        client.say(to, 'alias ' + result[1] + ' added for ' + result[0]);
                     }
                     else {
                         client.say(to, 'addalias usage: ' + params.botflag + ' addalias <known nick> <additional nick/alias>');
@@ -206,6 +207,7 @@ db.connect(params.db, function(err, db) {
                 else if (match_botflag[1] == 'adduser') {
                     if (subcmd != '') {
                         functions.channel_check_alias(client, users, notes, to, nick, subcmdlow, moment().format(), 'adduser', '');
+                        client.say(to, 'user ' + subcmd + ' added');
                     }
                     else {
                         client.say(to, 'adduser usage: ' + params.botflag + ' adduser <nick>');
@@ -243,10 +245,10 @@ db.connect(params.db, function(err, db) {
                     var regex_yt_id = /^([^&]+)/;
                     var match_yt_id = regex_yt_id.exec(match_yt[1]);
                     youtube.getById(match_yt_id[1], function(result) {
-                        console.log(result);
                         if (result['items'].length == 1) {
                             client.say(to, pasted_url + ' : "' + result['items'][0]['snippet']['title'] + '" uploaded by ' + result['items'][0]['snippet']['channelTitle'] +
                                 ' (' + result['items'][0]['contentDetails']['duration'].substring(2).toLowerCase() + ')');
+                            functions.misc_update_counts(misc, to, 'youtube');
                         }
                     });
                     match_yt = regex_yt.exec(text);
