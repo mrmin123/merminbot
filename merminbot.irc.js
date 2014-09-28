@@ -1,15 +1,9 @@
 var db = require('mongodb').MongoClient;
 var moment = require('moment');
+var tz = require('moment-timezone');
 var youtube = require('youtube-node');
 var params = require('./params.js');
 var functions = require('./functions.js');
-
-function get_date_time() {
-    var date_time = new Array(2);
-    date_time[0] = moment().format('MMMM Do YYYY');
-    date_time[1] = moment().format('h:mm a');
-    return date_time;
-}
 
 youtube.setKey(params.google_api_key);
 
@@ -38,11 +32,11 @@ db.connect(params.db, function(err, db) {
         var in_chan = [];
         
         client.addListener('ping', function (server) {
-            functions.misc_update_uptime(misc, get_date_time());
+            functions.misc_update_uptime(misc, moment().format());
         });
         
         client.addListener('names', function (channel, nicks) {
-            functions.misc_update_uptime(misc, get_date_time());
+            functions.misc_update_uptime(misc, moment().format());
             var nick_list = {};
             for (var nick in nicks) {
                 if (nicks.hasOwnProperty(nick)) {
@@ -73,12 +67,12 @@ db.connect(params.db, function(err, db) {
                     var channel = channels[i];
                     if (cur_channels.indexOf(channel != -1)) {
                         in_chan[channel] = functions.in_chan_remove(in_chan[channel], nick);
-                        functions.channel_alias_set_datetime(users, channel, nick, get_date_time());
+                        functions.channel_alias_set_datetime(users, channel, nick, moment().format());
                     }
                 }
             }
             else {
-                functions.misc_update_uptime(misc, get_date_time());
+                functions.misc_update_uptime(misc, moment().format());
                 in_chan[channel] = {};
             }
         });
@@ -87,7 +81,7 @@ db.connect(params.db, function(err, db) {
             if (nick != params.irc['botname']) {
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_remove(in_chan[channel], nick);
-                functions.channel_alias_set_datetime(users, channel, nick, get_date_time());
+                functions.channel_alias_set_datetime(users, channel, nick, moment().format());
             }
             else {
                 in_chan[channel] = {};
@@ -98,7 +92,7 @@ db.connect(params.db, function(err, db) {
             if (nick != params.irc['botname']) {
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_remove(in_chan[channel], nick);
-                functions.channel_alias_set_datetime(users, channel, nick, get_date_time());
+                functions.channel_alias_set_datetime(users, channel, nick, moment().format());
             }
             else {
                 in_chan[channel] = {};
@@ -112,9 +106,8 @@ db.connect(params.db, function(err, db) {
                 for (var i = 0; i < channels.length; i++) {
                     var channel = channels[i];
                     in_chan[channel] = functions.in_chan_rename(in_chan[channel], oldnick, newnick);
-                    if (functions.channel_merge_alias(users, channel, oldnick, newnick) == 1) {
-                        functions.channel_add_alias(users, channel, oldnick, newnick);
-                    }
+                    functions.channel_merge_alias(users, channel, oldnick, newnick);
+                    functions.view_notes(client, users, notes, channel, newnick, 'auto');
                 }
             }
         });
@@ -134,23 +127,40 @@ db.connect(params.db, function(err, db) {
                 var subcmdlow = subcmd.toLowerCase();
                 match_botflag[1] = match_botflag[1].toLowerCase();
                 
-                if(match_botflag[1] == 'lastseen') {
+                if(match_botflag[1] == 'lastseen' || match_botflag[1] == 'ls' || match_botflag[1] == 'seen') {
                     if (subcmd != '') {
                         users.findOne(
                             { 'aliases': { $in: [subcmdlow] }, 'channel': to },
-                            { '_id': 0, 'last_seen': 1 },
+                            { '_id': 0, 'last_seen': 1, 'aliases': 1 },
                             function(err, result) {
                                 if (result) {
-                                    var raw = result['last_seen'];
-                                    if (raw[0] == 0 && raw[1] == 0) {
-                                        client.say(to, '"' + subcmd + '" is still here (theoretically)');
-                                        // add check to compare current users to requested user
+                                    var raw_datetime = result['last_seen'];
+                                    if (raw_datetime == 0) {
+                                        var known_aliases = result['aliases'];
+                                        var in_channel_temp = in_chan[to];
+                                        var alias_in_channel = '';
+                                        var alias_in_channel_check = 0;
+                                        for (var i = 0; i < known_aliases.length; i++) {
+                                            for (var j = 0; j < in_channel_temp.length; j++) {
+                                                if (known_aliases[i] == in_channel_temp[j].toLowerCase()) {
+                                                    alias_in_channel = in_channel_temp[j];
+                                                    alias_in_channel_check = 1;
+                                                }
+                                            }
+                                        }
+                                        if (alias_in_channel_check == 1) {
+                                            client.say(to, subcmd + ' is still here as ' + alias_in_channel);
+                                        }
+                                        else {
+                                            functions.misc_get_uptime(client, misc, subcmd);
+                                        }
                                     }
-                                    else if (raw[0] == -1 && raw[1] == -1) {
+                                    else if (raw_datetime == -1) {
                                         client.say(to, 'haven\'t seen ' + subcmd + ' yet (added manually)');
                                     }
                                     else {
-                                        client.say(to, subcmd + ' last seen on ' + raw[0] + ' ' + raw[1]);
+                                        var formatted_datetime = functions.parse_date(raw_datetime);
+                                        client.say(to, subcmd + ' last seen on ' + formatted_datetime[3]);
                                     }
                                 }
                                 else {
@@ -172,9 +182,9 @@ db.connect(params.db, function(err, db) {
                         client.say(to, 'addalias usage: ' + params.botflag + ' addalias <known nick> <additional nick/alias>');
                     }
                 }
-                else if (match_botflag[1] == 'viewalias') {
+                else if (match_botflag[1] == 'viewalias' || match_botflag[1] == 'viewaliases') {
                     if (subcmd != '') {
-                        functions.channel_check_alias(client, users, notes, to, nick, subcmd, get_date_time(), 'viewalias', '');
+                        functions.channel_check_alias(client, users, notes, to, nick, subcmdlow, moment().format(), 'viewalias', '');
                     }
                     else {
                         client.say(to, 'viewalias usage: ' + params.botflag + ' viewalias <known nick>');
@@ -182,30 +192,35 @@ db.connect(params.db, function(err, db) {
                 }
                 else if (match_botflag[1] == 'adduser') {
                     if (subcmd != '') {
-                        functions.channel_check_alias(client, users, notes, to, nick, subcmd, get_date_time(), 'adduser', '');
+                        functions.channel_check_alias(client, users, notes, to, nick, subcmdlow, moment().format(), 'adduser', '');
                     }
                     else {
                         client.say(to, 'adduser usage: ' + params.botflag + ' adduser <nick>');
                     }
                 }
-                else if (match_botflag[1] == 'addnote') {
+                else if (match_botflag[1] == 'addnote' | match_botflag[1] == 'leavenote') {
                     if (subcmd != '') {
-                        var result = subcmdlow.split(' ');
+                        var result = subcmd.split(' ');
                         if (result.length > 1) {
-                            var name_to = result.shift();
+                            var name_to = result.shift().toLowerCase();
                             var note = result.join(' ');
-                            functions.channel_check_alias(client, users, notes, to, nick, name_to, get_date_time(), 'addnote', note);
+                            functions.channel_check_alias(client, users, notes, to, nick, name_to, moment().format(), 'addnote', note);
                         }
                         else {
                             client.say(to, 'addnote usage: ' + params.botflag + ' addnote <recipient nick> <note>');
+                            client.say(to, 'addnote aliases: leavenote');
                         }
                     }
                     else {
                         client.say(to, 'addnote usage: ' + params.botflag + ' addnote <recipient nick> <note>');
+                        client.say(to, 'addnote aliases: leavenote');
                     }
                 }
-                else if (match_botflag[1] == 'getnotes') {
+                else if (match_botflag[1] == 'getnotes' || match_botflag[1] == 'getnote' || match_botflag[1] == 'viewnote' || match_botflag[1] == 'viewnotes') {
                     functions.view_notes(client, users, notes, to, nick, 'manual');
+                }
+                else {
+                    client.say(to, 'commands (and aliases): lastseen (ls seen) addalias viewalias (viewaliases) adduser addnote (leavenote) getnotes (getnote viewnote viewnotes)');
                 }
             }
             

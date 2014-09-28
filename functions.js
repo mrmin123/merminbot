@@ -1,3 +1,6 @@
+var moment = require('moment');
+var tz = require('moment-timezone');
+
 var in_chan_add = function(nick_list, nick) {
     nick_list[nick] = 1;
     return nick_list;
@@ -18,10 +21,21 @@ var in_chan_rename = function(nick_list, oldnick, newnick) {
     return nick_list;
 }
 
+var parse_date = function(raw, timezone) {
+    timezone = (typeof timezone === 'undefined') ? 'America/Los_Angeles' : timezone;
+    var formatted_datetime = new Array(4);
+    var time = moment(raw);
+    formatted_datetime[0] = time.tz(timezone).format('MMMM Do YYYY');
+    formatted_datetime[1] = time.tz(timezone).format('h:mma z');
+    formatted_datetime[2] = time.fromNow();
+    formatted_datetime[3] = formatted_datetime[0] + ' ' + formatted_datetime[1] + ' (' + formatted_datetime[2] + ')';
+    return formatted_datetime;
+}
+
 var channel_new_alias = function(users, channel, nick, mode) {
-    var date_time = [0, 0];
+    var date_time = 0;
     if (mode == 'manual') {
-        date_time = [-1, -1];
+        date_time = -1;
     }
     
     users.findOne(
@@ -74,7 +88,7 @@ var channel_merge_alias = function(users, channel, oldnick, newnick) {
                                     [ ['_id', 1] ],
                                     {
                                         $addToSet: { 'aliases': { $each: result_old['aliases'] } },
-                                        $set: { 'last_seen': [0, 0] }
+                                        $set: { 'last_seen': 0 }
                                     },
                                     { w: 1 },
                                     function(err, result_toss) {}
@@ -84,11 +98,29 @@ var channel_merge_alias = function(users, channel, oldnick, newnick) {
                                     {w: 1},
                                     function(err, result_toss) {}
                                 );
+                                notes.find(
+                                    { 'to': result_old['_id'], 'channel': channel },
+                                    { sort: { 'date_time': 1 } }
+                                ).toArray(function(err, result_notes) {
+                                    if (result_notes.length > 0) {
+                                        for (var i = 0; i < result_notes.length; i++) {
+                                            var raw_obj = result_notes[i];
+                                            notes.findAndModify(
+                                                { '_id': raw_obj['_id'] },
+                                                [ ],
+                                                { $set: { 'to': result_new['_id'] } },
+                                                { w: 1 },
+                                                function(err, result_toss) {}
+                                            );
+                                        }
+                                    }
+                                });
                             }
                         }
                     }
                 );
             }
+            channel_add_alias(users, channel, oldnick, newnick);
         }
     );
     return 1;
@@ -149,6 +181,17 @@ var misc_update_uptime = function(misc, date_time) {
     );
 }
 
+var misc_get_uptime = function(client, misc, misc) {
+    misc.findOne(
+        { 'status': 1 },
+        { 'last_uptime': 1 },
+        function (err, result) {
+            var formatted_datetime = parse_date(result['last_uptime']);
+            client.say(to, 'Lost track of ' + misc + '! Last seen around ' + formatted_datetime[3]);
+        }
+    );
+}
+
 var add_note = function(users, notes, channel, name_from, name_to, note, date_time) {
     users.findOne(
         { 'aliases': { $in: [name_to] }, 'channel': channel },
@@ -156,7 +199,7 @@ var add_note = function(users, notes, channel, name_from, name_to, note, date_ti
         function(err, result) {
             if (result != null) {
                 notes.insert(
-                    { 'from': name_from, 'to': result['_id'], 'channel': channel, 'note': note, 'read': 0, 'date_time': date_time, 'date_time_raw': new Date() },
+                    { 'from': name_from, 'to': result['_id'], 'channel': channel, 'note': note, 'read': 0, 'date_time': date_time },
                     function(err, result) {}
                 );
             }
@@ -172,13 +215,13 @@ var view_notes = function(client, users, notes, channel, nick, mode) {
             if (result_users != null) {
                 notes.find(
                     { 'to': result_users['_id'], 'channel': channel, 'read': 0 },
-                    { sort: { 'date_time_raw': 1 } }
+                    { sort: { 'date_time': 1 } }
                 ).toArray(function(err, result_notes) {
                     if (result_notes.length > 0) {
                         for (var i = 0; i < result_notes.length; i++) {
                             var raw_obj = result_notes[i];
-                            var date_time = raw_obj['date_time'];
-                            client.say(channel, 'note left by ' + raw_obj['from'] + ' for ' + nick + ' on ' + date_time[0] + ' ' + date_time[1] + ': ' + raw_obj['note']);
+                            var formatted_datetime = parse_date(raw_obj['date_time']);
+                            client.say(channel, 'note left by ' + raw_obj['from'] + ' for ' + nick + ' on ' + formatted_datetime[3] + ': ' + raw_obj['note']);
                             notes.findAndModify(
                                 { '_id': raw_obj['_id'] },
                                 [ ],
@@ -203,6 +246,7 @@ module.exports = {
     in_chan_add: in_chan_add,
     in_chan_remove: in_chan_remove,
     in_chan_rename: in_chan_rename,
+    parse_date: parse_date,
     channel_new_alias: channel_new_alias,
     channel_add_alias: channel_add_alias,
     channel_merge_alias: channel_merge_alias,
