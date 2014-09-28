@@ -20,12 +20,16 @@ var client = new irc.Client(
     }
 );
 
+console.log('irc connect');
+
 client.addListener('error', function(message) {
     console.log('irc error: ', message);
 });
 
 db.connect(params.db, function(err, db) {
     if (!err) {
+        console.log('db connect');
+        
         var users = db.collection('users');
         var notes = db.collection('notes');
         var misc = db.collection('misc');
@@ -36,6 +40,7 @@ db.connect(params.db, function(err, db) {
         });
         
         client.addListener('names', function (channel, nicks) {
+            console.log('NAMES: ' + channel);
             functions.misc_update_uptime(misc, moment().format());
             var nick_list = {};
             for (var nick in nicks) {
@@ -52,6 +57,7 @@ db.connect(params.db, function(err, db) {
         
         client.addListener('join', function (channel, nick, message) {
             if (nick != params.irc['botname']) {
+                console.log('JOIN: ' + nick + ' to ' + channel);
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_add(in_chan[channel], nick);
                 functions.channel_new_alias(users, channel, nick, 'auto');
@@ -61,6 +67,7 @@ db.connect(params.db, function(err, db) {
         
         client.addListener('quit', function (nick, reason, channels, message) {
             if (nick != params.irc['botname']) {
+                console.log('QUIT: ' + nick);
                 nick = nick.toLowerCase();
                 var cur_channels = params.irc['channels'];
                 for (var i = 0; i < channels.length; i++) {
@@ -79,6 +86,7 @@ db.connect(params.db, function(err, db) {
         
         client.addListener('part', function (channel, nick, reason, message) {
             if (nick != params.irc['botname']) {
+                console.log('PART: ' + nick);
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_remove(in_chan[channel], nick);
                 functions.channel_alias_set_datetime(users, channel, nick, moment().format());
@@ -90,6 +98,7 @@ db.connect(params.db, function(err, db) {
         
         client.addListener('kick', function (channel, nick, by, reason, message) {
             if (nick != params.irc['botname']) {
+                console.log('KICK: ' + nick + ' from ' + channel);
                 nick = nick.toLowerCase();
                 in_chan[channel] = functions.in_chan_remove(in_chan[channel], nick);
                 functions.channel_alias_set_datetime(users, channel, nick, moment().format());
@@ -100,13 +109,14 @@ db.connect(params.db, function(err, db) {
         });
         
         client.addListener('nick', function (oldnick, newnick, channels, message) {
+            console.log('NICK: ' + oldnick + ' to ' + newnick);
             if (oldnick != params.irc['botname']) {                    
                 oldnick = oldnick.toLowerCase();
                 newnick = newnick.toLowerCase();
                 for (var i = 0; i < channels.length; i++) {
                     var channel = channels[i];
                     in_chan[channel] = functions.in_chan_rename(in_chan[channel], oldnick, newnick);
-                    functions.channel_merge_alias(users, channel, oldnick, newnick);
+                    functions.channel_merge_alias(users, notes, channel, oldnick, newnick);
                     functions.view_notes(client, users, notes, channel, newnick, 'auto');
                 }
             }
@@ -133,6 +143,7 @@ db.connect(params.db, function(err, db) {
                             { 'aliases': { $in: [subcmdlow] }, 'channel': to },
                             { '_id': 0, 'last_seen': 1, 'aliases': 1 },
                             function(err, result) {
+                                console.log('MSG: lastseen query for ' + subcmdlow);
                                 if (result) {
                                     var raw_datetime = result['last_seen'];
                                     if (raw_datetime == 0) {

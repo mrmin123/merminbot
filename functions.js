@@ -45,7 +45,7 @@ var channel_new_alias = function(users, channel, nick, mode) {
             if (result == null) {
                 users.insert(
                     { 'aliases': [nick], 'channel': channel, 'last_seen': date_time },
-                    function(err, result) {}
+                    function(err, result) { console.log('channel_new_alias: ' + nick + ' (' + channel + ') added'); }
                 );
             }
             else {
@@ -54,7 +54,7 @@ var channel_new_alias = function(users, channel, nick, mode) {
                     [ ['aliases', 1] ],
                     { $set: { 'last_seen': date_time } },
                     { w: 1 },
-                    function(err, result2) {}
+                    function(err, result2) { console.log('channel_new_alias: ' + nick + ' (' + channel + ') updated'); }
                 );
             }
         }
@@ -67,11 +67,11 @@ var channel_add_alias = function(users, channel, oldnick, newnick) {
         [ ['aliases', 1] ],
         { $addToSet: { 'aliases': newnick } },
         { w: 1 },
-        function(err, result) { added = 1;}
+        function(err, result) { console.log('channel_add_alias: ' + newnick + ' alias added to ' + oldnick + ' (' + channel + ')'); }
     );
 }
 
-var channel_merge_alias = function(users, channel, oldnick, newnick) {
+var channel_merge_alias = function(users, notes, channel, oldnick, newnick) {
     users.findOne(
         { 'aliases': { $in: [newnick] }, 'channel': channel },
         { '_id': 1, 'aliases': 1 },
@@ -91,36 +91,42 @@ var channel_merge_alias = function(users, channel, oldnick, newnick) {
                                         $set: { 'last_seen': 0 }
                                     },
                                     { w: 1 },
-                                    function(err, result_toss) {}
-                                );
-                                users.remove(
-                                    { '_id': result_old['_id'] },
-                                    {w: 1},
-                                    function(err, result_toss) {}
-                                );
-                                notes.find(
-                                    { 'to': result_old['_id'], 'channel': channel },
-                                    { sort: { 'date_time': 1 } }
-                                ).toArray(function(err, result_notes) {
-                                    if (result_notes.length > 0) {
-                                        for (var i = 0; i < result_notes.length; i++) {
-                                            var raw_obj = result_notes[i];
-                                            notes.findAndModify(
-                                                { '_id': raw_obj['_id'] },
-                                                [ ],
-                                                { $set: { 'to': result_new['_id'] } },
-                                                { w: 1 },
-                                                function(err, result_toss) {}
-                                            );
-                                        }
+                                    function(err, result_merge) { 
+                                        console.log('channel_merge_alias: ' + oldnick + ' merged to ' + newnick + ' (' + channel + ')');
+                                        users.remove(
+                                            { '_id': result_old['_id'] },
+                                            {w: 1},
+                                            function(err, result_remove) { 
+                                                console.log('channel_merge_alias: ' + oldnick + ' (' + channel + ') entry removed');
+                                                notes.find(
+                                                    { 'to': result_old['_id'], 'channel': channel },
+                                                    { sort: { 'date_time': 1 } }
+                                                ).toArray(function(err, result_notes) {
+                                                    if (result_notes.length > 0) {
+                                                        for (var i = 0; i < result_notes.length; i++) {
+                                                            var raw_obj = result_notes[i];
+                                                            notes.findAndModify(
+                                                                { '_id': raw_obj['_id'] },
+                                                                [ ],
+                                                                { $set: { 'to': result_new['_id'] } },
+                                                                { w: 1 },
+                                                                function(err, result_merge_notes) { console.log('channel_merge_alias: notes for ' + oldnick + ' switched to ' + newnick + ' (' + channel + ')'); }
+                                                            );
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                        );
                                     }
-                                });
+                                );
                             }
                         }
                     }
                 );
             }
-            channel_add_alias(users, channel, oldnick, newnick);
+            else {
+                channel_add_alias(users, channel, oldnick, newnick);
+            }
         }
     );
     return 1;
@@ -133,28 +139,34 @@ var channel_check_alias = function(client, users, notes, channel, from_nick, nic
         function(err, result) {
             if (mode == 'adduser') {
                 if (result == null) {
+                    console.log('channel_check_alias: attempt manual add of user ' + nick + ' (' + channel + ')');
                     channel_new_alias(users, channel, nick, 'manual');
                     client.say(channel, 'user ' + nick + ' added');
                 }
                 else {
+                    console.log('channel_check_alias: manual add of user ' + nick + ' (' + channel + ') failed: already in memory');
                     client.say(channel, 'user ' + nick + ' already in memory');
                 }
             }
             else if (mode == 'viewalias') {
                 if (result != null) {
+                    console.log('channel_check_alias: list aliases for ' + nick + ' (' + channel + ')');
                     var aliases = result['aliases'].join(', ');
                     client.say(channel, 'known aliases for ' + nick + ': ' + aliases);
                 }
                 else {
+                    console.log('channel_check_alias: cannot list aliases for ' + nick + ' (' + channel + '): unknown user');
                     client.say(channel, 'unknown user ' + nick);
                 }
             }
             else if (mode == 'addnote') {
                 if (result != null) {
+                    console.log('channel_check_alias: attempt to leave note for ' + nick + ' (' + channel + '): ' + note);
                     add_note(users, notes, channel, from_nick, nick, note, date_time);
                     client.say(channel, 'saved note for ' + nick);
                 }
                 else {
+                    console.log('channel_check_alias: cannot leave note for ' + nick + ' (' + channel + '): unknown user');
                     client.say(channel, 'unknown user ' + nick + '. Try adduser first.');
                 }
             }
@@ -168,7 +180,7 @@ var channel_alias_set_datetime = function(users, channel, nick, date_time) {
         [ ['aliases', 1] ],
         { $set: { 'last_seen': date_time } },
         { w: 1 },
-        function(err, result) {}
+        function(err, result) { console.log('channel_alias_set_datetime: update last seen for ' + nick + ' (' + channel + ')'); }
     );
 }
 
@@ -200,7 +212,7 @@ var add_note = function(users, notes, channel, name_from, name_to, note, date_ti
             if (result != null) {
                 notes.insert(
                     { 'from': name_from, 'to': result['_id'], 'channel': channel, 'note': note, 'read': 0, 'date_time': date_time },
-                    function(err, result) {}
+                    function(err, result) { console.log('add_note: added note for ' + name_to + ' (' + channel + ') from ' + name_from); }
                 );
             }
         }
@@ -218,6 +230,7 @@ var view_notes = function(client, users, notes, channel, nick, mode) {
                     { sort: { 'date_time': 1 } }
                 ).toArray(function(err, result_notes) {
                     if (result_notes.length > 0) {
+                        console.log('view_notes: got notes for ' + nick + ' (' + channel + ')');
                         for (var i = 0; i < result_notes.length; i++) {
                             var raw_obj = result_notes[i];
                             var formatted_datetime = parse_date(raw_obj['date_time']);
@@ -227,12 +240,13 @@ var view_notes = function(client, users, notes, channel, nick, mode) {
                                 [ ],
                                 { $set: { 'read': 1 } },
                                 { w: 1 },
-                                function(err, result_toss) {}
+                                function(err, result_toss) { console.log('view_notes: set notes for ' + nick + ' (' + channel + ') as read'); }
                             );
                         }
                     }
                     else {
                         if (mode == 'manual') {
+                            console.log('view_notes: no notes for ' + nick + ' (' + channel + ')');
                             client.say(channel, 'no unread notes for ' + nick);
                         }
                     }
