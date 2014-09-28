@@ -268,7 +268,7 @@ module.exports = {
     channel_check_alias: channel_check_alias,
     channel_alias_set_datetime: channel_alias_set_datetime,
     note_add: note_add,
-    note_view: note_view
+    note_view: note_view,
     misc_update_uptime: misc_update_uptime,
-    misc_get_uptime: misc_get_uptime,
+    misc_get_uptime: misc_get_uptime
 }
