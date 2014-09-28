@@ -141,10 +141,12 @@ db.connect(params.db, function(err, db) {
                                         var alias_in_channel = '';
                                         var alias_in_channel_check = 0;
                                         for (var i = 0; i < known_aliases.length; i++) {
-                                            for (var j = 0; j < in_channel_temp.length; j++) {
-                                                if (known_aliases[i] == in_channel_temp[j].toLowerCase()) {
-                                                    alias_in_channel = in_channel_temp[j];
-                                                    alias_in_channel_check = 1;
+                                            for (var in_channel_nick in in_channel_temp) {
+                                                if (in_channel_temp.hasOwnProperty(in_channel_nick)) {
+                                                    if (known_aliases[i] == in_channel_nick.toLowerCase()) {
+                                                        alias_in_channel = in_channel_nick;
+                                                        alias_in_channel_check = 1;
+                                                    }
                                                 }
                                             }
                                         }
