@@ -129,7 +129,7 @@ db.connect(params.db, function(err, db) {
             var re_botflag = new RegExp(regex_botflag, "i");
             var match_botflag = text.match(re_botflag);
             
-            var regex_yt = /(?:https?:\/\/)?(?:[\w]+\.)?youtu\.?be(?:\.com)?\/watch\?v=([\S]+)/ig;
+            var regex_yt = /(?:https?:\/\/)?(?:[\w]+\.)?youtu\.?be(?:\.com)?\/(?:v\/|u\/\w\/|embed\/|watch\?v=)?([\S]+)/ig;
             var match_yt = regex_yt.exec(text);
             
             if (match_botflag) {
@@ -242,13 +242,16 @@ db.connect(params.db, function(err, db) {
             if (match_yt) {
                 while (match_yt != null) {
                     var pasted_url = match_yt[0];
-                    var regex_yt_id = /^([^&]+)/;
+                    var regex_yt_id = /^([^?&]+)/;
                     var match_yt_id = regex_yt_id.exec(match_yt[1]);
                     youtube.getById(match_yt_id[1], function(result) {
                         if (result['items'].length == 1) {
                             client.say(to, pasted_url + ' : "' + result['items'][0]['snippet']['title'] + '" uploaded by ' + result['items'][0]['snippet']['channelTitle'] +
                                 ' (' + result['items'][0]['contentDetails']['duration'].substring(2).toLowerCase() + ')');
                             functions.misc_update_counts(misc, to, 'youtube');
+                        }
+                        else {
+                            client.say(to, pasted_url + ' : not a valid video');
                         }
                     });
                     match_yt = regex_yt.exec(text);

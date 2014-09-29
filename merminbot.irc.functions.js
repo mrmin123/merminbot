@@ -1,5 +1,6 @@
 var moment = require('moment');
 var tz = require('moment-timezone');
+var params = require('./params.js');
 
 var in_chan_add = function(nick_list, nick) {
     nick_list[nick] = 1;
@@ -218,6 +219,7 @@ var note_view = function(client, users, notes, channel, nick, mode) {
                                 var raw_obj = result_notes[i];
                                 var formatted_datetime = parse_date(raw_obj['date_time']);
                                 client.say(channel, 'note left by ' + raw_obj['from'] + ' for ' + nick + ' on ' + formatted_datetime[3] + ': ' + raw_obj['note']);
+                                client.say(channel, 'older notes for you can be found at ' + params.url + channel.substring(1) + '/' + nick + '/');
                                 notes.findAndModify(
                                     { '_id': raw_obj['_id'] },
                                     [ ],
@@ -231,6 +233,7 @@ var note_view = function(client, users, notes, channel, nick, mode) {
                             if (mode == 'manual') {
                                 console.log('note_view: no notes for ' + nick + ' (' + channel + ')');
                                 client.say(channel, 'no unread notes for ' + nick);
+                                client.say(channel, 'older notes for you can be found at ' + params.url + channel.substring(1) + '/' + nick + '/');
                             }
                         }
                     }

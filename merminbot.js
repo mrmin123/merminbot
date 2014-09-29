@@ -49,7 +49,7 @@ db.connect(params.db, function(err, db) {
                             if (result_users.length > 0) {
                                 for (var i = 0; i < result_users.length; i++) {
                                     user_count++;
-                                    alias_array = alias_array.concat(result_users['aliases']);
+                                    alias_array = alias_array.concat(result_users[i]['aliases']);
                                 }
                                 var alias_count = alias_array.length;
                                 body_raw.push('<div class="box"><i class="fa fa-user fa-5x"></i><strong>' + user_count + '</strong><span>tracked users</span></div>');

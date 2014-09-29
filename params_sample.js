@@ -1,4 +1,5 @@
 exports.db = 'mongodb://user:pass@db';
+exports.url = 'http://<botname>.herokuapp.com/';
 
 exports.botflag = '!123';
 
